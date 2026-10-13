@@ -6,12 +6,11 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
+#include <locale>
 
-namespace
-{
-	std::ostream* out = &std::cout;
-	std::istream* in = &std::cin;
-}
+// Одна общая переменная на всю программу (C++17 inline-переменные)
+inline std::ostream* cool_out = &std::cout;
+inline std::istream* cool_in  = &std::cin;
 
 namespace cool
 {
@@ -22,29 +21,30 @@ namespace cool
 		setlocale(LC_ALL, "Russian");
 	}
 
-	void setPrintOut(std::ostream& os)
+	inline void setPrintOut(std::ostream& os)
 	{
-		::out = &os;
+		cool_out = &os;
 	}
 
-	std::ostream* getPrintOutPtr()
+	inline std::ostream* getPrintOutPtr()
 	{
-		return ::out;
+		return cool_out;
 	}
-	
+
 	inline void printFlush()
 	{
-		*::out << std::flush;
+		*cool_out << std::flush;
 	}
 
-	inline void print() 
-	{ 
-		*::out << ' ';
+	inline void print()
+	{
+		*cool_out << ' ';
 	}
+
 	template <typename Arg>
 	inline void print(const Arg& arg)
 	{
-		*::out <<  std::fixed << std::setprecision(2) << arg << ' ';
+		*cool_out << std::fixed << std::setprecision(2) << arg;
 	}
 
 	template <typename Arg, typename... Args>
@@ -57,12 +57,13 @@ namespace cool
 
 	inline void println()
 	{
-		*::out << '\n';
+		*cool_out << '\n';
 	}
+
 	template <typename Arg>
 	inline void println(const Arg& arg)
 	{
-		*::out << std::fixed << std::setprecision(2) << arg << '\n';
+		*cool_out << std::fixed << std::setprecision(2) << arg << '\n';
 	}
 
 	template <typename... Args>
@@ -72,12 +73,13 @@ namespace cool
 		println();
 	}
 	///
-	void print0() { }
+
+	inline void print0() { }
 
 	template <typename Arg>
 	inline void print0(const Arg& arg)
 	{
-		*::out << std::fixed << std::setprecision(2) << arg;
+		*cool_out << std::fixed << std::setprecision(2) << arg;
 	}
 
 	template <typename Arg, typename... Args>
@@ -89,70 +91,77 @@ namespace cool
 
 	// INPUT
 
-	void setInputIn(std::istream& is){
-		::in = &is;
+	inline void setInputIn(std::istream& is)
+	{
+		cool_in = &is;
 	}
 
-	std::istream* getInputInPtr(){
-		return ::in;
+	inline std::istream* getInputInPtr()
+	{
+		return cool_in;
 	}
 
 	template <typename Arg>
-	void input(Arg& value){
-		*::in >> value;
+	void input(Arg& value)
+	{
+		*cool_in >> value;
 	}
 
 	template <typename T, typename... Args>
-	void input(T& first, Args&... rest){
+	void input(T& first, Args&... rest)
+	{
 		input(first);
 		input(rest...);
 	}
 
-	inline void inputln(std::string& line){
-		std::getline(*::in, line);
+	inline void inputln(std::string& line)
+	{
+		std::getline(*cool_in, line);
 	}
 
 	// Combo-bonus function
 
 	template <typename T>
-	void prompt(const std::string& msg, T& value){
+	void prompt(const std::string& msg, T& value)
+	{
 		cool::print(msg);
 		cool::input(value);
 	}
 
 	// Базовый случай (один аргумент)
-    template <typename T>
-    T sum(const T& arg)
-    {
-        return arg;
-    }
+	template <typename T>
+	T sum(const T& arg)
+	{
+		return arg;
+	}
 
-    // Рекурсивный случай (два или более аргументов)
-    template <typename T, typename... Args>
-    auto sum(const T& first, const Args&... rest)
-    {
-        return first + sum(rest...);
-    }
+	// Рекурсивный случай (два или более аргументов)
+	template <typename T, typename... Args>
+	auto sum(const T& first, const Args&... rest)
+	{
+		return first + sum(rest...);
+	}
 
 	template <typename T>
-	T min(const T& arg) {return arg;}
+	T min(const T& arg) { return arg; }
 
 	template <typename T, typename... Args>
-	auto min(const T& first, const Args&... rest){
+	auto min(const T& first, const Args&... rest)
+	{
 		auto rest_min = min(rest...);
 		return (first < rest_min) ? first : rest_min;
 	}
 
 	template <typename T>
-	T max(const T& arg) {return arg;}
+	T max(const T& arg) { return arg; }
 
 	template <typename T, typename... Args>
-	auto max(const T& first, const Args&... rest){
+	auto max(const T& first, const Args&... rest)
+	{
 		auto rest_max = max(rest...);
 		return (first > rest_max) ? first : rest_max;
 	}
 
 #define COOL_INFO(x) (std::string(#x) + " = " + std::to_string(x))
 }
-
 #endif
