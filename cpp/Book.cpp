@@ -12,7 +12,7 @@ Book::Book(int id, const string& title, int year,
 
 string Book::getAuthor() const { return author; }
 string Book::getIsbn()   const { return isbn; }
-string Book::type()      const { return "Book"; }
+string Book::type()      const { return "Книга"; }
 
 void Book::printInfo() const {
     print0("[Книга] id=", id, ", \"", title, "\", год=", year,
@@ -23,7 +23,7 @@ void Book::printInfo() const {
 
 string Book::serialize() const {
     ostringstream oss;
-    oss << "Book;" << id << ";" << title << ";" << year << ";"
+    oss << "B;" << id << ";" << title << ";" << year << ";"
         << (available ? 1 : 0) << ";" << author << ";" << isbn;
     return oss.str();
 }

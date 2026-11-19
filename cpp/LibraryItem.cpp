@@ -2,7 +2,7 @@
 
 using namespace std;
 
-LibraryItem::LibraryItem(int id, const string& title, int type, bool available)
+LibraryItem::LibraryItem(int id, const string& title, int year, bool available)
     : id(id), title(title), year(year), available(available) {}
 
 int LibraryItem::getId() const {return id;}

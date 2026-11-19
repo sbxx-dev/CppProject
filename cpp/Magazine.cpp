@@ -13,7 +13,7 @@ Magazine::Magazine(int id, const string& title, int year,
 
 int Magazine::getIssueNumber() const { return issueNumber; }
 int Magazine::getMonth()       const { return month; }
-string Magazine::type()        const { return "Magazine"; }
+string Magazine::type()        const { return "Журнал"; }
 
 void Magazine::printInfo() const {
     print0("[Журнал] id=", id, ", \"", title, "\", год=", year,
@@ -24,7 +24,7 @@ void Magazine::printInfo() const {
 
 string Magazine::serialize() const {
     ostringstream oss;
-    oss << "Magazine;" << id << ";" << title << ";" << year << ";"
+    oss << "M;" << id << ";" << title << ";" << year << ";"
         << (available ? 1 : 0) << ";" << issueNumber << ";" << month;
     return oss.str();
 }
