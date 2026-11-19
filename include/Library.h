@@ -18,14 +18,20 @@ class Library {
     int generateLoanId() const;
 
 public:
+    bool addItem(std::unique_ptr<LibraryItem> item);
     void addBook();
     void addMagazine();
     void registerReader();
     void findItemById() const;
+    void findReaderByTicket() const;
     void issueItem();
     void returnItem();
-    void printAvailable() const;
+    void printAvailableItems() const;
     void printActiveLoans() const;
     void save() const;
     void load();
+
+    LibraryItem* findItemById(int id) const;
+    Reader* findReaderByTicket(int ticket) const;
+    size_t getItemCount() const { return items.size(); }
 };

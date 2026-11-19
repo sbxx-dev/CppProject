@@ -7,6 +7,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 using namespace std;
 using namespace cool;
@@ -31,22 +32,43 @@ int Library::generateLoanId() const {
     return maxId + 1;
 }
 
+// ---------- Публичные методы поиска ----------
+
+LibraryItem* Library::findItemById(int id) const {
+    return findItem(id);
+}
+
+Reader* Library::findReaderByTicket(int ticket) const {
+    for (auto& r : readers)
+        if (r.getTicket() == ticket) return const_cast<Reader*>(&r);
+    return nullptr;
+}
+
+// ---------- 0. Общий addItem ----------
+
+bool Library::addItem(std::unique_ptr<LibraryItem> item) {
+    if (!validation::isUniqueItemId(items, item->getId())) {
+        return false;
+    }
+    items.push_back(std::move(item));
+    return true;
+}
+
 // ---------- 1. Добавить книгу ----------
 
 void Library::addBook() {
     println("\n--- Добавление книги ---");
     int id = readInt("id (1..1000000): ", 1, 1000000);
-    if (!validation::isUniqueItemId(items, id)) {
-        println("Ошибка: издание с таким id уже существует.");
-        return;
-    }
     string title  = readNonEmpty("Название: ");
     int year      = readInt("Год (1500..2100): ", 1500, 2100);
     string author = readNonEmpty("Автор: ");
     string isbn   = readNonEmpty("ISBN: ");
 
-    items.push_back(make_unique<Book>(id, title, year, author, isbn, true));
-    println("Книга успешно добавлена.");
+    auto book = make_unique<Book>(id, title, year, author, isbn, true);
+    if (addItem(std::move(book)))
+        println("Книга успешно добавлена.");
+    else
+        println("Ошибка: издание с таким id уже существует.");
 }
 
 // ---------- 2. Добавить журнал ----------
@@ -54,17 +76,16 @@ void Library::addBook() {
 void Library::addMagazine() {
     println("\n--- Добавление журнала ---");
     int id = readInt("id (1..1000000): ", 1, 1000000);
-    if (!validation::isUniqueItemId(items, id)) {
-        println("Ошибка: издание с таким id уже существует.");
-        return;
-    }
     string title = readNonEmpty("Название: ");
     int year     = readInt("Год (1500..2100): ", 1500, 2100);
     int issue    = readInt("Номер выпуска (1..10000): ", 1, 10000);
     int month    = readInt("Месяц (1..12): ", 1, 12);
 
-    items.push_back(make_unique<Magazine>(id, title, year, issue, month, true));
-    println("Журнал успешно добавлен.");
+    auto mag = make_unique<Magazine>(id, title, year, issue, month, true);
+    if (addItem(std::move(mag)))
+        println("Журнал успешно добавлен.");
+    else
+        println("Ошибка: издание с таким id уже существует.");
 }
 
 // ---------- 3. Зарегистрировать читателя ----------
@@ -77,8 +98,12 @@ void Library::registerReader() {
         return;
     }
     string name = readNonEmpty("ФИО: ");
-    readers.emplace_back(ticket, name);
-    println("Читатель зарегистрирован.");
+    try {
+        readers.emplace_back(ticket, name);
+        println("Читатель зарегистрирован.");
+    } catch (const invalid_argument& e) {
+        println("Ошибка: ", e.what());
+    }
 }
 
 // ---------- 4. Найти издание по id ----------
@@ -89,6 +114,17 @@ void Library::findItemById() const {
     LibraryItem* item = findItem(id);
     if (!item) { println("Издание не найдено."); return; }
     item->printInfo();
+}
+
+// ---------- 4.1. Найти читателя по ticket ----------
+
+void Library::findReaderByTicket() const {
+    println("\n--- Поиск читателя ---");
+    int ticket = readInt("ticket: ", 1, 1000000);
+    Reader* reader = findReaderByTicket(ticket);
+    if (!reader) { println("Читатель не найден."); return; }
+    println("Читатель найден: ticket=", reader->getTicket(),
+            ", ФИО=", reader->getFullName());
 }
 
 // ---------- 5. Выдать издание ----------
@@ -104,9 +140,13 @@ void Library::issueItem() {
     if (!item->isAvailable())  { println("Ошибка: издание занято.");      return; }
 
     int loanId = generateLoanId();
-    loans.emplace_back(loanId, ticket, itemId, true);
-    item->setAvailable(false);
-    println("Издание выдано. Номер выдачи:", loanId);
+    try {
+        loans.emplace_back(loanId, ticket, itemId, true);
+        item->setAvailable(false);
+        println("Издание выдано. Номер выдачи:", loanId);
+    } catch (const invalid_argument& e) {
+        println("Ошибка: ", e.what());
+    }
 }
 
 // ---------- 6. Вернуть издание ----------
@@ -133,7 +173,7 @@ void Library::returnItem() {
 
 // ---------- 7. Вывести доступные издания ----------
 
-void Library::printAvailable() const {
+void Library::printAvailableItems() const {
     println("\n--- Доступные издания ---");
     bool found = false;
     for (const auto& item : items) {
@@ -184,48 +224,79 @@ void Library::save() const {
 void Library::load() {
     items.clear(); readers.clear(); loans.clear();
 
+    // --- items.txt ---
     {
         ifstream f("items.txt");
+        if (!f) return; // отсутствие файла — без ошибки
         string line;
         while (getline(f, line)) {
             if (line.empty()) continue;
             auto p = split(line, ';');
-            if (p.size() < 7) continue;
+            if (p.size() < 7) {
+                println("Предупреждение: пропущена повреждённая строка в items.txt: ", line);
+                continue;
+            }
             try {
                 string type = p[0];
                 int id      = stoi(p[1]);
                 string title = p[2];
                 int year    = stoi(p[3]);
                 bool avail  = (p[4] == "1");
-                if (type == "Book")
+                if (type == "Book" || type == "B")
                     items.push_back(make_unique<Book>(id, title, year, p[5], p[6], avail));
-                else if (type == "Magazine")
+                else if (type == "Magazine" || type == "M")
                     items.push_back(make_unique<Magazine>(id, title, year,
                         stoi(p[5]), stoi(p[6]), avail));
-            } catch (...) {}
+                else
+                    println("Предупреждение: пропущена повреждённая строка в items.txt: ", line);
+            } catch (const std::invalid_argument& e) {
+                println("Предупреждение: пропущена повреждённая строка в items.txt: ", line);
+            } catch (const std::out_of_range& e) {
+                println("Предупреждение: пропущена повреждённая строка в items.txt: ", line);
+            }
         }
     }
+    // --- readers.txt ---
     {
         ifstream f("readers.txt");
+        if (!f) return;
         string line;
         while (getline(f, line)) {
             if (line.empty()) continue;
             auto p = split(line, ';');
-            if (p.size() < 2) continue;
-            try { readers.emplace_back(stoi(p[0]), p[1]); } catch (...) {}
+            if (p.size() < 2) {
+                println("Предупреждение: пропущена повреждённая строка в readers.txt: ", line);
+                continue;
+            }
+            try {
+                readers.emplace_back(stoi(p[0]), p[1]);
+            } catch (const std::invalid_argument& e) {
+                println("Предупреждение: пропущена повреждённая строка в readers.txt: ", line);
+            } catch (const std::out_of_range& e) {
+                println("Предупреждение: пропущена повреждённая строка в readers.txt: ", line);
+            }
         }
     }
+    // --- loans.txt ---
     {
         ifstream f("loans.txt");
+        if (!f) return;
         string line;
         while (getline(f, line)) {
             if (line.empty()) continue;
             auto p = split(line, ';');
-            if (p.size() < 4) continue;
+            if (p.size() < 4) {
+                println("Предупреждение: пропущена повреждённая строка в loans.txt: ", line);
+                continue;
+            }
             try {
                 loans.emplace_back(stoi(p[0]), stoi(p[1]),
                                    stoi(p[2]), p[3] == "1");
-            } catch (...) {}
+            } catch (const std::invalid_argument& e) {
+                println("Предупреждение: пропущена повреждённая строка в loans.txt: ", line);
+            } catch (const std::out_of_range& e) {
+                println("Предупреждение: пропущена повреждённая строка в loans.txt: ", line);
+            }
         }
     }
 }

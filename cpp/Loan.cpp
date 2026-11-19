@@ -1,10 +1,21 @@
 #include "Loan.h"
 #include <sstream>
+#include <stdexcept>
 
 using namespace std;
 
-Loan::Loan(int id, int readerTicket, int itemId, bool active)
-    : id(id), readerTicket(readerTicket), itemId(itemId), active(active) {}
+Loan::Loan(int id, int readerTicket, int itemId, bool active) {
+    if (id <= 0)
+        throw invalid_argument("id выдачи должен быть > 0");
+    if (readerTicket <= 0)
+        throw invalid_argument("ticket читателя должен быть > 0");
+    if (itemId <= 0)
+        throw invalid_argument("id издания должен быть > 0");
+    this->id = id;
+    this->readerTicket = readerTicket;
+    this->itemId = itemId;
+    this->active = active;
+}
 
 int Loan::getId() const { return id; }
 int Loan::getReaderTicket() const { return readerTicket; }
